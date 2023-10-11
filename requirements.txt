@@ -1,0 +1,9 @@
+flask
+openai
+python-dotenv
+gunicorn
+langchain 
+faiss-cpu
+tiktoken
+babel
+pymongo
