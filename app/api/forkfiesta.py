@@ -106,6 +106,25 @@ def welcome():
     return jsonify({"message": "Welcome to ForkFiesta API"})
 
 
+# Route to list all orders
+@forkfiesta_routes.route("/orders", methods=["GET"])
+def get_all_orders():
+    # Get all orders
+    orders = orders_collection.find({})
+
+    return jsonify({"message": orders})
+
+# Route to list a specific order
+@forkfiesta_routes.route("/orders/:id", methods=["GET"])
+def get_order():
+    # Get order id
+    order_id = request.args.get("id")
+
+    # Get order
+    order = orders_collection.find_one({"order_id": int(order_id)})
+
+    return jsonify({"message": order})
+
 # Route to create an order given some food ids and quantities
 @forkfiesta_routes.route("/write-order", methods=["POST"])
 def write_order():
