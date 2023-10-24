@@ -1,5 +1,7 @@
 from flask import Blueprint, jsonify, request
+import requests
 import json
+import os
 from datetime import datetime
 
 
@@ -18,82 +20,114 @@ forkfiesta_delivery_db = mdb_client.forkfiesta_delivery
 orders_collection = forkfiesta_delivery_db.orders
 feedback_collection = forkfiesta_delivery_db.feedback
 
-menu_prices = [
-    {"id": 1, "name": "Combo 1", "price": 22000},
-    {"id": 2, "name": "Combo 2", "price": 25000},
-    {"id": 3, "name": "Combo 3", "price": 33000},
-    {"id": 4, "name": "Combo 4", "price": 60000},
-    {"id": 5, "name": "Combo 5", "price": 70000},
-    {"id": 6, "name": "Combo 6", "price": 25000},
-    {"id": 7, "name": "Burger pollo peperoni", "price": 20000},
-    {"id": 8, "name": "Burger pollo peperoni en combo", "price": 25000},
-    {"id": 9, "name": "Burger mixta", "price": 25000},
-    {"id": 10, "name": "Burger mixta en combo", "price": 29500},
-    {"id": 11, "name": "Burger artesanal", "price": 20000},
-    {"id": 12, "name": "Burger artesanal en combo", "price": 25000},
-    {"id": 13, "name": "Burger ropa vieja", "price": 20000},
-    {"id": 14, "name": "Burger ropa vieja en combo", "price": 25000},
-    {"id": 15, "name": "Maicitos gratinados", "price": 22000},
-    {"id": 16, "name": "Chuzo gratinado", "price": 23000},
-    {"id": 17, "name": "Salchipapa mini", "price": 12000},
-    {"id": 18, "name": "Salchipapa personal", "price": 22000},
-    {"id": 19, "name": "Carne de res", "price": 19500},
-    {"id": 20, "name": "Carne de cerdo", "price": 19500},
-    {"id": 21, "name": "Punta de anca", "price": 26000},
-    {"id": 22, "name": "Churrasco", "price": 26000},
-    {"id": 23, "name": "Cañón de cerdo", "price": 19500},
-    {"id": 24, "name": "Pechuga", "price": 22000},
-    {"id": 25, "name": "Papa", "price": 5500},
-    {"id": 26, "name": "Tocinetas (2)", "price": 4000},
-    {"id": 27, "name": "Salchichas (2)", "price": 4000},
-    {"id": 28, "name": "Alita", "price": 3500},
-    {"id": 29, "name": "Queso", "price": 5500},
-    {"id": 30, "name": "Queso cheddar", "price": 4000},
-    {"id": 31, "name": "Salsa de queso", "price": 4000},
-    {"id": 32, "name": "Carne hamburguesa", "price": 7000},
-    {"id": 33, "name": "Aros de cebolla", "price": 4000},
-    {"id": 34, "name": "Pollo hamburguesa", "price": 7000},
-    {"id": 35, "name": "Tornados (1)", "price": 3000},
-    {"id": 36, "name": "Pepinillo", "price": 3000},
-    {"id": 37, "name": "Jalapeños", "price": 3000},
-    {"id": 38, "name": "Arepa", "price": 2000},
-    {"id": 39, "name": "Trozos", "price": 5500},
-    {"id": 40, "name": "Yukas", "price": 4000},
-    {"id": 41, "name": "Carne desmechada", "price": 7000},
-    {"id": 42, "name": "Ensalada", "price": 4000},
-    {"id": 43, "name": "Vaso frutas", "price": 4000},
-    {"id": 44, "name": "Gaseosa 250 ml", "price": 2500},
-    {"id": 45, "name": "Jugo Hit", "price": 3700},
-    {"id": 46, "name": "Mr. te", "price": 3700},
-    {"id": 47, "name": "Gatorade", "price": 4500},
-    {"id": 48, "name": "Canada Dry", "price": 4000},
-    {"id": 49, "name": "Jugo agua", "price": 5000},
-    {"id": 50, "name": "Jugo en leche", "price": 7000},
-    {"id": 51, "name": "Limonada natural", "price": 5000},
-    {"id": 52, "name": "Soda de frutas", "price": 8000},
-    {"id": 53, "name": "Limonada de mango biche", "price": 9000},
-    {"id": 54, "name": "Limonada de coco", "price": 10000},
-    {"id": 55, "name": "Limonada de cereza", "price": 10000},
-    {"id": 56, "name": "Botella de agua", "price": 2500},
-    {"id": 57, "name": "Redbull", "price": 6000},
-    {"id": 58, "name": "Andina", "price": 5000},
-    {"id": 59, "name": "Club Colombia", "price": 5000},
-    {"id": 60, "name": "Poker", "price": 5000},
-    {"id": 61, "name": "Aguila light", "price": 5000},
-    {"id": 62, "name": "Corona", "price": 7000},
-    {"id": 63, "name": "Miller lite", "price": 7000},
-    {"id": 64, "name": "3 Cordilleras", "price": 7000},
-    {"id": 65, "name": "sol", "price": 7000},
-    {"id": 66, "name": "Stella", "price": 9000},
-    {"id": 67, "name": "Vaso michelado", "price": 1700},
-    {"id": 68, "name": "Papas locas", "price": 45000},
-    {"id": 69, "name": "Tocipapas", "price": 10000},
-    {"id": 70, "name": "AD Maíz", "price": 3500},
-    {"id": 71, "name": "Tarro salsa maíz", "price": 23000},
-    {"id": 72, "name": "Heineken", "price": 7000},
-    {"id": 73, "name": "Helado para perros", "price": 5000},
-]
+# Microservices APIs
+menu_api_url = os.environ.get("MENU_API")
 
+# GraphQL query string to retrieve the menu
+menu_query = """
+{
+  foods {
+    id
+    name
+    price
+    description
+    category
+  }
+}
+"""
+
+# GraphQL request headers 
+headers = {
+    "Content-Type": "application/json",
+}
+
+# Send a POST request to the GraphQL menu microservice
+response = requests.post(menu_api_url, json={"query": menu_query}, headers=headers)
+
+# Parse and handle the response
+if response.status_code == 200:
+    data = response.json()
+    menu_prices = data.get("data", {}).get("foods", [])
+else:
+    print(f"GraphQL Request Failed with Status Code: {response.status_code}")
+    print("Response:")
+    print(response.text)
+
+# menu_prices = [
+#     {"id": 1, "name": "Combo 1", "price": 22000},
+#     {"id": 2, "name": "Combo 2", "price": 25000},
+#     {"id": 3, "name": "Combo 3", "price": 33000},
+#     {"id": 4, "name": "Combo 4", "price": 60000},
+#     {"id": 5, "name": "Combo 5", "price": 70000},
+#     {"id": 6, "name": "Combo 6", "price": 25000},
+#     {"id": 7, "name": "Burger pollo peperoni", "price": 20000},
+#     {"id": 8, "name": "Burger pollo peperoni en combo", "price": 25000},
+#     {"id": 9, "name": "Burger mixta", "price": 25000},
+#     {"id": 10, "name": "Burger mixta en combo", "price": 29500},
+#     {"id": 11, "name": "Burger artesanal", "price": 20000},
+#     {"id": 12, "name": "Burger artesanal en combo", "price": 25000},
+#     {"id": 13, "name": "Burger ropa vieja", "price": 20000},
+#     {"id": 14, "name": "Burger ropa vieja en combo", "price": 25000},
+#     {"id": 15, "name": "Maicitos gratinados", "price": 22000},
+#     {"id": 16, "name": "Chuzo gratinado", "price": 23000},
+#     {"id": 17, "name": "Salchipapa mini", "price": 12000},
+#     {"id": 18, "name": "Salchipapa personal", "price": 22000},
+#     {"id": 19, "name": "Carne de res", "price": 19500},
+#     {"id": 20, "name": "Carne de cerdo", "price": 19500},
+#     {"id": 21, "name": "Punta de anca", "price": 26000},
+#     {"id": 22, "name": "Churrasco", "price": 26000},
+#     {"id": 23, "name": "Cañón de cerdo", "price": 19500},
+#     {"id": 24, "name": "Pechuga", "price": 22000},
+#     {"id": 25, "name": "Papa", "price": 5500},
+#     {"id": 26, "name": "Tocinetas (2)", "price": 4000},
+#     {"id": 27, "name": "Salchichas (2)", "price": 4000},
+#     {"id": 28, "name": "Alita", "price": 3500},
+#     {"id": 29, "name": "Queso", "price": 5500},
+#     {"id": 30, "name": "Queso cheddar", "price": 4000},
+#     {"id": 31, "name": "Salsa de queso", "price": 4000},
+#     {"id": 32, "name": "Carne hamburguesa", "price": 7000},
+#     {"id": 33, "name": "Aros de cebolla", "price": 4000},
+#     {"id": 34, "name": "Pollo hamburguesa", "price": 7000},
+#     {"id": 35, "name": "Tornados (1)", "price": 3000},
+#     {"id": 36, "name": "Pepinillo", "price": 3000},
+#     {"id": 37, "name": "Jalapeños", "price": 3000},
+#     {"id": 38, "name": "Arepa", "price": 2000},
+#     {"id": 39, "name": "Trozos", "price": 5500},
+#     {"id": 40, "name": "Yukas", "price": 4000},
+#     {"id": 41, "name": "Carne desmechada", "price": 7000},
+#     {"id": 42, "name": "Ensalada", "price": 4000},
+#     {"id": 43, "name": "Vaso frutas", "price": 4000},
+#     {"id": 44, "name": "Gaseosa 250 ml", "price": 2500},
+#     {"id": 45, "name": "Jugo Hit", "price": 3700},
+#     {"id": 46, "name": "Mr. te", "price": 3700},
+#     {"id": 47, "name": "Gatorade", "price": 4500},
+#     {"id": 48, "name": "Canada Dry", "price": 4000},
+#     {"id": 49, "name": "Jugo agua", "price": 5000},
+#     {"id": 50, "name": "Jugo en leche", "price": 7000},
+#     {"id": 51, "name": "Limonada natural", "price": 5000},
+#     {"id": 52, "name": "Soda de frutas", "price": 8000},
+#     {"id": 53, "name": "Limonada de mango biche", "price": 9000},
+#     {"id": 54, "name": "Limonada de coco", "price": 10000},
+#     {"id": 55, "name": "Limonada de cereza", "price": 10000},
+#     {"id": 56, "name": "Botella de agua", "price": 2500},
+#     {"id": 57, "name": "Redbull", "price": 6000},
+#     {"id": 58, "name": "Andina", "price": 5000},
+#     {"id": 59, "name": "Club Colombia", "price": 5000},
+#     {"id": 60, "name": "Poker", "price": 5000},
+#     {"id": 61, "name": "Aguila light", "price": 5000},
+#     {"id": 62, "name": "Corona", "price": 7000},
+#     {"id": 63, "name": "Miller lite", "price": 7000},
+#     {"id": 64, "name": "3 Cordilleras", "price": 7000},
+#     {"id": 65, "name": "sol", "price": 7000},
+#     {"id": 66, "name": "Stella", "price": 9000},
+#     {"id": 67, "name": "Vaso michelado", "price": 1700},
+#     {"id": 68, "name": "Papas locas", "price": 45000},
+#     {"id": 69, "name": "Tocipapas", "price": 10000},
+#     {"id": 70, "name": "AD Maíz", "price": 3500},
+#     {"id": 71, "name": "Tarro salsa maíz", "price": 23000},
+#     {"id": 72, "name": "Heineken", "price": 7000},
+#     {"id": 73, "name": "Helado para perros", "price": 5000},
+# ]
 
 
 # ? BUSINESS FUNCTIONS
@@ -144,7 +178,7 @@ def write_order():
         if substring:
             pair = substring.split(',')
             # Convert the split values to integers and add them to the result list
-            order_message_splitted.append([int(pair[0]), int(pair[1])])
+            order_message_splitted.append([pair[0], int(pair[1])])
 
     # Check if there are items in the order
     if not order_message_splitted:
