@@ -21,7 +21,8 @@ orders_collection = forkfiesta_delivery_db.orders
 feedback_collection = forkfiesta_delivery_db.feedback
 
 # Microservices APIs
-menu_api_url = os.environ.get("MENU_API")
+api_gateway_url = os.environ.get("API_GATEWAY_URL")
+print("MENU API:",api_gateway_url)
 
 # GraphQL query string to retrieve the menu
 menu_query = """
@@ -42,12 +43,12 @@ headers = {
 }
 
 # Send a POST request to the GraphQL menu microservice
-response = requests.post(menu_api_url, json={"query": menu_query}, headers=headers)
+response = requests.get(f'{api_gateway_url}/menu')
 
 # Parse and handle the response
 if response.status_code == 200:
     data = response.json()
-    menu_prices = data.get("data", {}).get("foods", [])
+    menu_prices = data.get("foods", [])
 else:
     print(f"GraphQL Request Failed with Status Code: {response.status_code}")
     print("Response:")
@@ -146,18 +147,23 @@ def get_all_orders():
     # Get all orders
     orders = orders_collection.find({})
 
-    return jsonify({"message": orders})
+    # Convert each document to a JSON object
+    json_documents = [json.loads(json.dumps(document, default=str)) for document in orders]
+
+    return jsonify({"message": json_documents})
 
 # Route to list a specific order
-@forkfiesta_routes.route("/orders/:id", methods=["GET"])
+@forkfiesta_routes.route("/order", methods=["GET"])
 def get_order():
     # Get order id
     order_id = request.args.get("id")
 
+    print("ORDER_ID:", order_id)
+
     # Get order
     order = orders_collection.find_one({"order_id": int(order_id)})
 
-    return jsonify({"message": order})
+    return jsonify({"message": json.loads(json.dumps(order, default=str))})
 
 # Route to create an order given some food ids and quantities
 @forkfiesta_routes.route("/write-order", methods=["POST"])
@@ -304,7 +310,7 @@ def create_order_id():
         return jsonify({"error": str(e)}), 400
     
 # Route to send feedback to our database
-@forkfiesta_routes.route("/feedback", methods=["POST"])
+@forkfiesta_routes.route("/feedbacks", methods=["POST"])
 def feedback():
     try:
         # Body data
@@ -339,3 +345,19 @@ def feedback():
         return jsonify({"message": "ok", "order_id": order_id, "feedback": feedback})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+# Route to retrieve all feedbacks from the database
+@forkfiesta_routes.route("/feedbacks", methods=["GET"])
+def get_feedbacks():
+    try:
+        # Retrieve all feedbacks from the database
+        feedbacks_cursor = feedback_collection.find()
+
+        # Convert each document to a JSON object
+        json_documents = [json.loads(json.dumps(document, default=str)) for document in feedbacks_cursor]
+
+        # Return feedbacks as JSON response
+        return jsonify({"feedbacks": json_documents})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
