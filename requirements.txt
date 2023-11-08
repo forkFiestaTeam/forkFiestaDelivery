@@ -1,9 +1,7 @@
 flask
-openai
+flask_cors
 python-dotenv
 gunicorn
-langchain 
-faiss-cpu
 tiktoken
 babel
 pymongo
