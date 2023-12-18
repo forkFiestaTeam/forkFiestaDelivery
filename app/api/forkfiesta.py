@@ -156,14 +156,18 @@ def get_all_orders():
 @forkfiesta_routes.route("/order", methods=["GET"])
 def get_order():
     # Get order id
-    order_id = request.args.get("id")
+    user_id = request.args.get("id")
 
-    print("ORDER_ID:", order_id)
+    print("ORDER_ID:", user_id)
 
-    # Get order
-    order = orders_collection.find_one({"order_id": int(order_id)})
+    # Get orders
+    order = orders_collection.find({"user_id": user_id})
 
-    return jsonify({"message": json.loads(json.dumps(order, default=str))})
+    # Convert each document to a JSON object
+    json_documents = [json.loads(json.dumps(document, default=str)) for document in order]
+
+    return jsonify({"message": json_documents})
+
 
 # Route to create an order given some food ids and quantities
 @forkfiesta_routes.route("/write-order", methods=["POST"])
@@ -259,6 +263,7 @@ def create_order_id():
         sauces = request.form.get("sauces", default_value)
         juices = request.form.get("juices", default_value)
         payment_method = request.form.get("payment_method", default_value)
+        user_id = request.form.get("user_id", default_value)
         created_at = datetime.now()
 
         # Check if each attribute in the body is not undefined
@@ -278,6 +283,8 @@ def create_order_id():
             return jsonify({"error": "The attribute 'juices' is not defined"}), 400
         elif payment_method is None:
             return jsonify({"error": "The attribute 'payment_method' is not defined"}), 400
+        elif user_id is None:
+            return jsonify({"error": "The attribute 'user_id' is not defined"}), 400
 
         # Retrieve the highest order id and the generate a new id adding 1
         last_order = orders_collection.find_one({}, sort=[("order_id", -1)])
@@ -295,10 +302,11 @@ def create_order_id():
             "address": address,
             "order": order,
             "observations": observations,
-            "sauces": sauces,
-            "juices": juices,
+            # "sauces": sauces,
+            # "juices": juices,
             "payment_method": payment_method,
-            "status": "En proceso",
+            "user_id": user_id,
+            "status": "Pending",
             "created_at": created_at,
         }
 
