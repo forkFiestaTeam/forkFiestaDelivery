@@ -42,17 +42,7 @@ headers = {
     "Content-Type": "application/json",
 }
 
-# Send a POST request to the GraphQL menu microservice
-response = requests.get(f'{api_gateway_url}/menu')
 
-# Parse and handle the response
-if response.status_code == 200:
-    data = response.json()
-    menu_prices = data.get("foods", [])
-else:
-    print(f"GraphQL Request Failed with Status Code: {response.status_code}")
-    print("Response:")
-    print(response.text)
 
 # menu_prices = [
 #     {"id": 1, "name": "Combo 1", "price": 22000},
@@ -135,6 +125,8 @@ else:
 # ? ROUTES
 forkfiesta_routes = Blueprint("forkfiesta_routes", __name__)
 
+# print(menu_prices)
+
 # Route to send a welcome message
 @forkfiesta_routes.route("/", methods=["GET"])
 def welcome():
@@ -172,6 +164,20 @@ def get_order():
 # Route to create an order given some food ids and quantities
 @forkfiesta_routes.route("/write-order", methods=["POST"])
 def write_order():
+
+    # Send a POST request to the GraphQL menu microservice
+    response = requests.get(f'{api_gateway_url}/menu')
+
+    # Parse and handle the response
+    if response.status_code == 200:
+        data = response.json()
+        menu_prices = data.get("foods", [])
+        print("GET FOODS SUCCESSFUL")
+    else:
+        print(f"GraphQL Request Failed with Status Code: {response.status_code}")
+        print("Response:")
+        print(response.text)
+
     # Body data
     data = request.get_json()
     order_message = data["order_message"]
